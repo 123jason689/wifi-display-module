@@ -1,12 +1,13 @@
 #include <Arduino.h>
 #include <Wire.h>
-// #include <Adafruit_SSD1306.h>
-// #include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
 #include <RTClib.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <freertos/FreeRTOS.h>
 #include <Preferences.h>
+#include "KeyInput.h"
 
 // put function declarations here:
 
@@ -17,7 +18,9 @@ Preferences pref;
 unsigned long globalmilisbuff_start;
 unsigned long globalmilisbuff_end;
 bool wifi_available;
+const int connection_time_limit = 10000;
 
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 void setup() {
   Serial.begin(115200);
@@ -39,7 +42,6 @@ void setup() {
     wifi_arr.push_back(std::make_tuple(WiFi.SSID(i).c_str(), WiFi.RSSI(i), WiFi.encryptionType(i)));
   }
 
-  String truessid;
 
   // THIS IS wifi_process function
   // trying to connect for each of the ssid available
@@ -49,16 +51,20 @@ void setup() {
   // if not connected, continue until we find the correct ssid and password pair
   // if we reach the end of the loop, and none of the ssid has the correct password pair-
   // we will loop again for each ssid that's 
-  String ssidsave = "my-ssid";
-  String passwordsave = "my-password";
+  char ssidsave[52] = "";
+  char passwordsave[52] = "";
+  bool flagged = false;
+
+  // looping every available wifi, if saved then connect with the available credential
   for (const auto& [ssid, rssi, enc] : wifi_arr){
     const char *truepass = pref.getString(ssid, "").c_str();
-    if (sizeof(truepass) == 1){
+    if (strlen(truepass) == 0){
       continue;
     } else {
+      strcpy(ssidsave, ssid);
       WiFi.begin(ssid, truepass);
       globalmilisbuff_start = millis();
-      while (WiFi.status() != WL_CONNECTED && millis() - globalmilisbuff_start < 10000){
+      while (WiFi.status() != WL_CONNECTED && millis() - globalmilisbuff_start < connection_time_limit){
         delay(1000);
         Serial.print(".");
       }
@@ -66,21 +72,29 @@ void setup() {
       
       if (WiFi.status() == WL_CONNECTED){
         // kalo ketemu dan benar break
+        flagged = true;
         break;
       } else{
+        // kalo salah coba ke yg lain dulu
         continue;
       }
     }
   }
-  // if the wifi is correct the
+
+  if(flagged == false){
+    // prompt user untuk milih wifi mana yang mau di pake dan masukin credentialsnya
+
+    // display untuk milih wifi
+
+    // setelah pilih masukin password dengan button events untuk milih huruf per huruf
+    const char* input = prompt_keyboard();
+  }
   pref.putString("ssid", ssid);
   pref.putString("password", truepass);
   
   // put your setup code here, to run once:
   int result = myFunction(2, 3);
   xTaskCreate(main, "main", 10000, NULL, 1, NULL);
-
-
 }
 
 void main(){
