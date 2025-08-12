@@ -4,3 +4,7 @@
 .vscode/launch.json
 .vscode/ipch
 .vscode/extensions.json
+
+# Local configuration
+.env.local
+.env
